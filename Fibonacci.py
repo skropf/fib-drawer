@@ -1,32 +1,29 @@
 """
-Copyright (C) 2016  Kropf Simon
+Copyright (C) 2019  Kropf Simon
 
-This program is free software: you can redistribute it and/or modify
+This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+the Free Software Foundation; version 2.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details. 
 
 You should have received a copy of the GNU General Public License
-along with this program. If not, see <http://www.gnu.org/licenses/>.
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import collections
 import numpy as np
 import math
-import itertools as i
+import itertools as it
 
 def get_fibonacci_number(position):
     return get_fibonacci_sequence(0, position)[position - 1]
 
 def get_fibonacci_sequence(start, end):
-    sequence = []
-    sequence.append(1)
-    sequence.append(1)
+    sequence = [1, 1]
     end = end - 2
 
     for i in range(end):
@@ -93,45 +90,42 @@ def _iterate_pyramid_(pyramid, currentLevel):
     _iterate_pyramid_(pyramid, currentLevel + 1)
 
 def _get_fibonacci_correction_list(level, orientation):
-    #correction x,y values
-    #for right-turning spirals
-    #switch xList & yList for left-turning spirals
-    #xList=[0, 0, 0, 1,  1, -2.0, -2.0, 6.0,  6.0, -15.0, -15.0, 40.0,  40.0, -104.0, -104.0]
-    #yList=[0, 0, 1, 1, -1, -1.0,  4.0, 4.0, -9.0,  -9.0,  25.0, 25.0, -64.0,  -64.0,  169.0]
+    # correction x,y values
+    # for right-turning spirals
+    # switch xList & yList for left-turning spirals
+    # xList=[0, 0, 0, 1,  1, -2.0, -2.0, 6.0,  6.0, -15.0, -15.0, 40.0,  40.0, -104.0, -104.0]
+    # yList=[0, 0, 1, 1, -1, -1.0,  4.0, 4.0, -9.0,  -9.0,  25.0, 25.0, -64.0,  -64.0,  169.0]
     xList = [0, 0, 0, 1, 1]
     yList = [0, 0, 1, 1, 1, 1]
 
     for i in range(5, level, 2):
-        #The last four elements in the list are added and the fifth last is subtracted = this is the value for the next two elements
+        # The last four elements in the list are added and the fifth last is subtracted = this is the value for the next two elements
         x = xList[i - 1] + xList[i - 2] + xList[i - 3] + xList[i - 4] - xList[i - 5]
         xList.append(x)
         xList.append(x)
-        #The last four elements in the list are added and the fifth last is subtracted = this is the value for the next two elements
+        # The last four elements in the list are added and the fifth last is subtracted = this is the value for the next two elements
         y = yList[i] + yList[i - 1] + yList[i - 2] + yList[i - 3] - yList[i - 4]
         yList.append(y)
         yList.append(y)
-    
-    
+
+    # change algebraic sign accordingly
+    # as you can see in the examples above you always have 2 negative then 2 positive and so on
+    # in x and y direction these signs are shifted to each other (expressed in these startX/Y vars below)
     startX = 1
     startY = 0
-    #change algebraic sign accordingly
     for i in range(startX, len(xList), 4):
+        # negiative sign for the next two elements (if existing => no OOB Exception)
         xList[i] = xList[i] * -1
-        if len(xList) > i + 1:
-            xList[i + 1] = xList[i + 1] * -1
+        if len(xList) > i + 1: xList[i + 1] = xList[i + 1] * -1
     for i in range(startY, len(yList), 4):
+        # negiative sign for the next two elements (if existing => no OOB Exception)
         yList[i] = yList[i] * -1
-        if len(yList) > i + 1:
-            yList[i + 1] = yList[i + 1] * -1
+        if len(yList) > i + 1: yList[i + 1] = yList[i + 1] * -1
 
-    #switch lists if orientation is left
-    if orientation == 'l':
-        bufferList = xList
-        xList = yList
-        yList = bufferList
-    
-    correctionList = [xList, yList]
-    
+    # switch lists if orientation is left
+    if orientation == 'l': correctionList = [yList, xList]
+    else: correctionList = [xList, yList]
+
     return correctionList
 
 def get_fibonacci_spiral(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor = 0):
@@ -153,7 +147,7 @@ def get_fibonacci_spiral(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor
         #set x&y lists with sine and r=fib to get circular quarter sections
         x = fib * np.sin(np.linspace(np.pi / 2, np.pi, 32))
         y = fib * np.sin(np.linspace(0, np.pi / 2, 32)) 
-        
+
         #rotate the fib-quarter-circle section accordingly to orientation
         if orientation == 'r':
             z = list(reversed(np.linspace(zPos, zPosNext, 32)))
@@ -161,24 +155,24 @@ def get_fibonacci_spiral(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor
         elif orientation == 'l':
             z = list(np.linspace(zPos, zPosNext, 32))
             rotated_matrix = _rot_matrix_(np.matrix([x, y, z]), 'z', -angle)
-            
-		#set lists with offset correction
+
+        #set lists with offset correction
         x = [x + xList[counter] for x in rotated_matrix[0]]
         y = [y + yList[counter] for y in rotated_matrix[1]]
         z = rotated_matrix[2]
-		
+
         rotMatrix = [x, y, z]
-        
-		#rotate finished fibonacci section again if desired (=rotAngle)
+
+        #rotate finished fibonacci section again if desired (=rotAngle)
         if rotAngle[2] != 0: rotMatrix = _rot_matrix_(np.matrix(rotMatrix), 'z', rotAngle[2])
         if rotAngle[1] != 0: rotMatrix = _rot_matrix_(np.matrix(rotMatrix), 'y', rotAngle[1])
         if rotAngle[0] != 0: rotMatrix = _rot_matrix_(np.matrix(rotMatrix), 'x', rotAngle[0])
 
-		#append finished matrix to the data list
+        #append finished matrix to the data list
         data.append(rotMatrix)
-		
-		#add 90deg to angle (=> next section)
-		#counter for appropriate position in offset list (xList, yList)
+
+        #add 90deg to angle (=> next section)
+        #counter for appropriate position in offset list (xList, yList)
         angle = angle + math.pi / 2
         counter = counter + 1
 
@@ -190,7 +184,7 @@ def get_fibonacci_cubes(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor 
     correctionList = _get_fibonacci_correction_list(level, orientation)
     xList = correctionList[0]
     yList = correctionList[1]
-    
+
     cubes = []
     angle = 0
     counter = 0
@@ -199,7 +193,7 @@ def get_fibonacci_cubes(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor 
         #set starting and ending z-Position for spatial positioning
         zPos = zPosNext
         zPosNext = zPos + (fib / 100.0 * zFactor)
-        
+
         #creation of cube (12 lines for each edge)
         cube = []
         r = [0, fib]
@@ -213,34 +207,33 @@ def get_fibonacci_cubes(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor 
                     rotated_line = _rot_matrix_(np.matrix(line), 'z', angle)
                 elif orientation == 'l':
                     rotated_line = _rot_matrix_(np.matrix(line), 'z', -angle)
-                
+
                 #set lists with offset correction
                 x = [x + xList[counter] for x in rotated_line[0]]
                 y = [y + yList[counter] for y in rotated_line[1]]
                 z = rotated_line[2]
-                
+
                 rotLine = [x, y, z]
-                
+
                 #rotate finished fibonacci section again if desired (=rotAngle)
                 if rotAngle[2] != 0: rotLine = _rot_matrix_(np.matrix(rotLine), 'z', rotAngle[2])
                 if rotAngle[1] != 0: rotLine = _rot_matrix_(np.matrix(rotLine), 'y', rotAngle[1])
                 if rotAngle[0] != 0: rotLine = _rot_matrix_(np.matrix(rotLine), 'x', rotAngle[0])
-                
+
                 cube.append(rotLine)
 
-        #add 90deg to angle (=> next section)
-        #counter for appropriate position in offset list (xList, yList)
+        # add 90deg to angle (=> next section)
+        # counter for appropriate position in offset list (xList, yList)
         angle = angle + math.pi / 2
         counter = counter + 1
-        
+
 
         cubes.append(cube)
-        
+
     return cubes
 
-
-#website for matrix operations: http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
-
+# Matrix rotation
+# website for matrix operations: http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
 def _rot_matrix_(matrix, axis, angle):
     if axis == 'x':
         x = np.array([1, 0, 0])
