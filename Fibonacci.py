@@ -1,19 +1,3 @@
-"""
-Copyright (C) 2019  Kropf Simon
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; version 2.
-
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
-for more details. 
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""
-
 import collections
 import numpy as np
 import math
@@ -123,17 +107,15 @@ def _get_fibonacci_correction_list(level, orientation):
         if len(yList) > i + 1: yList[i + 1] = yList[i + 1] * -1
 
     # switch lists if orientation is left
-    if orientation == 'l': correctionList = [yList, xList]
-    else: correctionList = [xList, yList]
+    if orientation == 'l': correctionList = { 'x': yList, 'y': xList }
+    else: correctionList = { 'x': xList, 'y': yList }
 
     return correctionList
 
-def get_fibonacci_spiral(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor = 0):
+def get_fibonacci_spiral(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor = 0, segments=16):
     fib_seq = get_fibonacci_sequence(0, level)
 
     correctionList = _get_fibonacci_correction_list(level, orientation)
-    xList = correctionList[0]
-    yList = correctionList[1]
 
     data = []
     angle = 0
@@ -145,20 +127,20 @@ def get_fibonacci_spiral(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor
         zPosNext = zPos + (fib / 100.0 * zFactor)
 
         #set x&y lists with sine and r=fib to get circular quarter sections
-        x = fib * np.sin(np.linspace(np.pi / 2, np.pi, 32))
-        y = fib * np.sin(np.linspace(0, np.pi / 2, 32)) 
+        x = fib * np.sin(np.linspace(np.pi / 2, np.pi, segments))
+        y = fib * np.sin(np.linspace(0, np.pi / 2, segments)) 
 
         #rotate the fib-quarter-circle section accordingly to orientation
         if orientation == 'r':
-            z = list(reversed(np.linspace(zPos, zPosNext, 32)))
+            z = list(reversed(np.linspace(zPos, zPosNext, segments)))
             rotated_matrix = _rot_matrix_(np.matrix([x, y, z]), 'z', angle)
         elif orientation == 'l':
-            z = list(np.linspace(zPos, zPosNext, 32))
+            z = list(np.linspace(zPos, zPosNext, segments))
             rotated_matrix = _rot_matrix_(np.matrix([x, y, z]), 'z', -angle)
 
         #set lists with offset correction
-        x = [x + xList[counter] for x in rotated_matrix[0]]
-        y = [y + yList[counter] for y in rotated_matrix[1]]
+        x = [x + correctionList['x'][counter] for x in rotated_matrix[0]]
+        y = [y + correctionList['y'][counter] for y in rotated_matrix[1]]
         z = rotated_matrix[2]
 
         rotMatrix = [x, y, z]
@@ -176,7 +158,18 @@ def get_fibonacci_spiral(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor
         angle = angle + math.pi / 2
         counter = counter + 1
 
-    return data
+    # converting the data which has 3 lists of x, y & z coordinates
+    # into one list with [x,y,z] points
+    points = []
+    for section in data:
+        pos = []
+        for x, y, z in zip(section[0], section[1], section[2]):
+            pos.append([round(x, 2), round(y, 2), round(z, 2)])
+        
+        if orientation == 'r': points.extend(reversed(pos))
+        if orientation == 'l': points.extend(pos)
+
+    return points
 
 def get_fibonacci_cubes(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor = 0):
     fib_seq = get_fibonacci_sequence(0, level)
@@ -197,7 +190,7 @@ def get_fibonacci_cubes(level, rotAngle = [0, 0, 0], orientation = 'r', zFactor 
         #creation of cube (12 lines for each edge)
         cube = []
         r = [0, fib]
-        for s, e in i.combinations(np.array(list(i.product(r,r,r))), 2):
+        for s, e in it.combinations(np.array(list(i.product(r,r,r))), 2):
             if np.sum(np.abs(s-e)) == r[1]-r[0]:
                 line = list(zip(s,e))
                 #correct z-Values to fit height (zFactor)
